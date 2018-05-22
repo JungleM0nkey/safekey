@@ -39,6 +39,7 @@ def load_settings():
         config_file = open('sfky_cnfg.pkl', 'rb')
         config_file.close()
     else:
+        os.makedirs('accounts')
         config_file = open('sfky_cnfg.pkl', 'wb')
         config_elements = {'file_location':'file_path',
                            'master_key':'key_string',
@@ -55,8 +56,9 @@ def load_settings():
         config_elements = pickle.load(config_file)
     document_path = config_elements['file_location']
     if document_path == 'file_path':
-        print('File location is not set')
-        document_path = ''
+        print('File location is not set, switching to default directory')
+        current_directory = os.getcwd()
+        document_path = f'{current_directory}\\accounts'
     else:
         print(f'File location set: {document_path}')
     #check to see wheather to use the the key from the file
@@ -71,6 +73,8 @@ def load_settings():
     config_file.close()
     return document_path,master_key_str
 
+
+
 #define global variables
 global document_path
 document_path = load_settings()
@@ -80,6 +84,8 @@ global master_key_str
 master_key_str = load_settings()
 master_key_str = master_key_str[1]
 
+current_selected_item = ''
+current_selected_item_index = ''
 
 
 
@@ -104,7 +110,7 @@ def decode(key, enc):
 def filter_out_entry_name(file_array):
     i = 0
     selection_array = []
-    if len(file_array) > 1:
+    if len(file_array) >= 1:
         for full_path in file_array:
             i += 1
             path_array = full_path.split("\\")
@@ -114,8 +120,8 @@ def filter_out_entry_name(file_array):
 #           item_index = selection_array.index(name_show_noformat)
 #           print("\n" + f'[{item_index+1}]' + " " + name_show_noformat[0])
     else:
-            print('No Files in Directory, exiting.')
-            exit()
+            print('No Files in Directory')
+            pass
 #        file = file_array[0]
 #        path_array = file.split("\\")
 #        name_show_format = path_array[-1]
