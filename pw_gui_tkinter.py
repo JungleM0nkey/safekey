@@ -7,30 +7,14 @@ import base64
 import os
 import sqlite3
 
-#
-#Database variable definition
-sqlite_file = 'db.sqlite'
-sqlite_table_accounts = 'table_accounts'
-#Columns
-name_field = 'name'
-id_field = 'ID'
-field_type_int = 'INTEGER'
-field_type_txt = 'TEXT'
-#Connect to DB
-connection = sqlite3.connect(sqlite_file)
-c = connection.cursor()
-#Check if DB file is new and if not create the tables inside
-if os.stat(sqlite_file).st_size <= 0:
-    c.execute(f'CREATE TABLE accounts (id INTEGER PRIMARY KEY,name TEXT,information TEXT)')
-    connection.commit()
-    connection.close()
+
+
 #Main Window
 root = Tk()
 root.title('SafeKey Password Manager')
 #Window size and opening location
 root.resizable(width=False,height=False)
 root.geometry('100x19+900+520')
-
 
 #Check if config file exists
 def load_settings():
@@ -39,9 +23,10 @@ def load_settings():
         config_file = open('sfky_cnfg.pkl', 'rb')
         config_file.close()
     else:
-        os.makedirs('accounts')
+#        os.makedirs('accounts')
+        current_directory = os.getcwd()
         config_file = open('sfky_cnfg.pkl', 'wb')
-        config_elements = {'file_location':'file_path',
+        config_elements = {'file_location':f'{current_directory}\\db.sqlite',
                            'master_key':'key_string',
                            'key_file_location':'file_path',
                            'use_key_file':'boolean',
@@ -55,17 +40,18 @@ def load_settings():
     with open('sfky_cnfg.pkl','rb') as config_file:
         config_elements = pickle.load(config_file)
     document_path = config_elements['file_location']
-    if document_path == 'file_path':
-        print('File location is not set, switching to default directory')
-        current_directory = os.getcwd()
-        document_path = f'{current_directory}\\accounts'
-    else:
-        print(f'File location set: {document_path}')
+#    if document_path == 'db.sqlite':
+#        print('File location is not set, switching to default directory')
+#        current_directory = os.getcwd()
+#        document_path = f'{current_directory}\\accounts'
+#    else:
+#        print(f'File location set: {document_path}')
     #check to see wheather to use the the key from the file
     if config_elements["use_key_file"] == True and config_elements["master_key"] != 'key_string':
         master_key_str = config_elements["master_key"]
     else:
         master_key_str = ''
+    print(f'Database file: {document_path}')
     print(f'Master key from file: {config_elements["master_key"]}')
     print(f'Key file location: {config_elements["key_file_location"]}')
     print(f'Use key file: {config_elements["use_key_file"]}')
@@ -73,13 +59,29 @@ def load_settings():
     config_file.close()
     return document_path,master_key_str
 
+#Database variable definition
+global sqlite_file
+sqlite_file = load_settings()
+sqlite_file = sqlite_file[0]
 
+#Connect to DB function
+def database_connection(sqlite_file):
+    global connection,c
+    connection = sqlite3.connect(sqlite_file)
+    c = connection.cursor()
+    # Check if DB file is new and if not create the tables inside
+    if os.stat(sqlite_file).st_size <= 0:
+        print('DB file is empty, making necessary tables')
+        c.execute(f'CREATE TABLE accounts (id INTEGER PRIMARY KEY,name TEXT,information TEXT)')
+        connection.commit()
+#run the DB function
+database_connection(sqlite_file)
 
 #define global variables
-global document_path
-document_path = load_settings()
-document_path = document_path[0]
-
+#global document_path
+#document_path = load_settings()
+#document_path = document_path[0]
+document_path = ''
 global master_key_str
 master_key_str = load_settings()
 master_key_str = master_key_str[1]
@@ -107,43 +109,41 @@ def decode(key, enc):
             dec.append(dec_c)
         return "".join(dec)
 
-def filter_out_entry_name(file_array):
-    i = 0
-    selection_array = []
-    if len(file_array) >= 1:
-        for full_path in file_array:
-            i += 1
-            path_array = full_path.split("\\")
-            name_show_format = path_array[-1]
-            name_show_noformat = name_show_format.split(".")
-            selection_array.append(name_show_noformat[0].lower())
-#           item_index = selection_array.index(name_show_noformat)
-#           print("\n" + f'[{item_index+1}]' + " " + name_show_noformat[0])
-    else:
-            print('No Files in Directory')
-            pass
-#        file = file_array[0]
-#        path_array = file.split("\\")
-#        name_show_format = path_array[-1]
-#        name_show_noformat = name_show_format.split(".")
-#        selection_array.append(name_show_noformat)
-#        print("\n[1] " + name_show_noformat[0])
-    return selection_array
-
+#Replacing with SQLite, no longer needed
+#def filter_out_entry_name(file_array):
+#    i = 0
+#    selection_array = []
+#    if len(file_array) >= 1:
+#        for full_path in file_array:
+#            i += 1
+#            path_array = full_path.split("\\")
+#            name_show_format = path_array[-1]
+#            name_show_noformat = name_show_format.split(".")
+#            selection_array.append(name_show_noformat[0].lower())
+#    else:
+#            print('No Files in Directory')
+#            pass
+#    return selection_array
 
 def view_entries(document_path):
-    if document_path == '':
-        pass
-    else:
-        listmenu.delete(0, END)
-        print(f'\nLooking through: {document_path}')
-        file_array = glob.glob(f"{document_path}//*.txt")
-        selection_array = filter_out_entry_name(file_array)
-        for item in selection_array:
-            listmenu.insert(END,item)
-        return selection_array
-
-
+#    if document_path == '':
+#        pass
+#    else:
+#        listmenu.delete(0, END)
+#        print(f'\nLooking through: {document_path}')
+#        file_array = glob.glob(f"{document_path}//*.txt")
+#        selection_array = filter_out_entry_name(file_array)
+#        for item in selection_array:
+#            listmenu.insert(END,item)
+#        return selection_array
+    #New SQL database code, fetch entry names from DB.sqlite file
+    selection_array = []
+    c.execute('SELECT name FROM accounts')
+    name_row = c.fetchall()
+    for name in name_row:
+        selection_array.append(name[0])
+        listmenu.insert(END, name[0])
+    return selection_array
 
 
 def entry_select(event):
@@ -158,6 +158,7 @@ def entry_select(event):
         entry_window(value)
         #gloval variables for the selected item and its index in the list
 
+
 def entry_window(file_name):
     entry_window_root = Toplevel(root)
     entry_window_root.title(f'Entry Information: {file_name}')
@@ -171,9 +172,12 @@ def entry_window(file_name):
     update_account_button = Button(entry_window_root,text='Update',width=13,command=lambda:update_entry(file_name,account_field,update_account_button))
     update_account_button.grid(sticky=S+E,padx=(5,5),pady=(2,2),column=0,row=1)
     #Fetch info from file after decoding
-    print(f'Fetching {document_path}//{file_name}.txt')
-    account_info_encrypted = open(f'{document_path}//{file_name}.txt', 'r')
-    account_info = account_info_encrypted.read()
+#    print(f'Fetching {document_path}//{file_name}.txt')
+#    account_info_encrypted = open(f'{document_path}//{file_name}.txt', 'r')
+#    account_info = account_info_encrypted.read()
+    c.execute(f"SELECT information FROM accounts WHERE name = '{file_name}'")
+    account_info = c.fetchone()
+    account_info = account_info[0]
     #Checks for the key
     if len(master_key_str) > 0:
         account_info = decode(master_key_str,account_info)
@@ -182,62 +186,63 @@ def entry_window(file_name):
         print(account_info)
         account_field.insert(END,account_info)
         update_account_button.config(state=DISABLED)
-    account_info_encrypted.close()
-
-
+#    account_info_encrypted.close()
 
 
 def update_entry(file_name,account_field,update_account_button):
     new_text = account_field.get(1.0,END)
     new_text_encrypted = encode(master_key_str, new_text)
-    account_info_encrypted = open(f'{document_path}//{file_name}.txt', 'w')
-    account_info_encrypted.write(new_text_encrypted)
-    account_info_encrypted.close
+#    account_info_encrypted = open(f'{document_path}//{file_name}.txt', 'w')
+#    account_info_encrypted.write(new_text_encrypted)
+#    account_info_encrypted.close
+    c.execute(f"UPDATE accounts SET information='{new_text_encrypted}' WHERE name='{file_name}'")
+    connection.commit()
     update_account_button.config(text='Done')
     print(f'Updating info with {new_text_encrypted}')
 
 
-
 #Settings window start==================================================================================================
+
 
 def folder_select(file_entry):
     #Ask to select folder where to look for files
     global document_path
-    document_path = filedialog.askdirectory()
+    document_path = filedialog.askopenfilename()
     file_entry.delete(0, END)
     file_entry.insert(0,document_path)
     file_entry.focus()
-    #Output the folder location to a dictionary to reload on future launch
+    #Output the db file location to a dictionary to reload on future launch
     with open(f'sfky_cnfg.pkl','rb') as config_file:
         config_elements = pickle.load(config_file)
         config_elements['file_location'] = document_path
     with open(f'sfky_cnfg.pkl', 'wb') as config_file:
         pickle.dump(config_elements, config_file)
     config_file.close()
+    database_connection(sqlite_file=document_path)
     reload_list(view_entries(document_path), searchentry, reload=1)
-    return document_path
+#   return document_path
 
 
-def settings(document_path):
+def settings(document_path,sqlite_file):
     file_window_root = Toplevel(root)
     file_window_root.title('Settings')
     file_window_root.resizable(width=False,height=False)
-    file_window_root.geometry('550x100+902+605')
+    file_window_root.geometry('555x101+902+605')
     #Entry Field and placement
     file_entry = Entry(file_window_root,width=60)
     file_entry.focus()
     #Fill in file path with current into stored inside the sfky_cnfg.pkl file
-    file_entry.insert(0, document_path)
+    file_entry.insert(0, sqlite_file)
     file_entry.grid(sticky=E,row=0,column=1,pady=(2,2),padx=(0,5))
     #Button Label and placement
-    file_label = Label(file_window_root, text="Files Directory")
+    file_label = Label(file_window_root, text="Database file")
     file_label.grid(sticky=EW,row=0,pady=(2,2),)
     #Button and placement
     file_button = Button(file_window_root, text="Browse",width=11,command=lambda:folder_select(file_entry))
     file_button.grid(sticky=W,row=0,column=2,pady=(2,2),)
     file_window_root.focus_force()
     #use a key file
-    key_location_label = Label(file_window_root, text='Key Location')
+    key_location_label = Label(file_window_root, text='  Key Location')
     key_location_label.grid(sticky=EW,row=1,padx=(5,10))
     key_location_entry = Entry(file_window_root,width=60)
     key_location_entry.grid(sticky=W,row=1,column=1,pady=(8,10))
@@ -259,7 +264,6 @@ def settings(document_path):
             pass
     apply_button = Button(file_window_root, text="Ok",width=11,command=lambda:close_window(file_window_root,current_selected_item,current_selected_item_index))
     apply_button.grid(row=2,column=2)
-
 
 
 def checkbox_action(checkbox_value):
@@ -354,7 +358,7 @@ def create_key_file(window,key_text_entry):
 #Settings window end==================================================================================================
 
 def close_window(window_root,current_selected_item,current_selected_item_index):
-    reload_list(view_entries(document_path), searchentry, reload=1)
+#    reload_list(view_entries(document_path), searchentry, reload=1)
     window_root.destroy()
     #reload the current list and select the previously selected item or different item
     listmenu.selection_clear(0, END)
@@ -362,6 +366,7 @@ def close_window(window_root,current_selected_item,current_selected_item_index):
     listmenu.activate(current_selected_item_index)
     mirror_info_to_side(current_selected_item)
     listmenu.see(current_selected_item_index)
+
 
 
 def close_window_and_input_key(key_entry,key_button,key_window_root):
@@ -454,7 +459,6 @@ def check_if_search_empty(searchentry):
 
 
 #New account panel
-
 def new_account_window():
     newpanel = Toplevel(root)
     newpanel.resizable(width=False,height=False)
@@ -474,6 +478,7 @@ def new_account_window():
         servicebutton.config(state=DISABLED)
 
 
+
 def create_entry(servicelabel_entry,entrybox,servicebutton,window):
     service_name = servicelabel_entry.get()
     service_information = entrybox.get('1.0', END)
@@ -481,6 +486,10 @@ def create_entry(servicelabel_entry,entrybox,servicebutton,window):
     new_file = open(f'{document_path}/{service_name}.txt', 'w+')
     new_file.write(service_information_encoded)
     new_file.close()
+    #SQL
+    connection.execute(f"INSERT INTO accounts (name,information) VALUES ('{service_name}','{service_information_encoded}')")
+    connection.commit()
+    #SQL
     servicebutton.config(text='Done')
     servicelabel_entry.delete(0,END)
     entrybox.delete('1.0',END)
@@ -493,25 +502,31 @@ def create_entry(servicelabel_entry,entrybox,servicebutton,window):
     close_window(window,current_selected_item=service_name,current_selected_item_index=new_file_index)
 
 
+
 #Side account info panel code
 def info_side_show(event):
-    click = event.widget
-    index = int(click.curselection()[0])
-    value = click.get(index)
-    print(f'\nYou selected item {value}')
-    mirror_info_to_side(value)
-    global current_selected_item,current_selected_item_index
-    current_selected_item = value
-    current_selected_item_index = index
+    try:
+        click = event.widget
+        index = int(click.curselection()[0])
+        value = click.get(index)
+        print(f'\nYou selected item {value}')
+        mirror_info_to_side(value)
+        global current_selected_item,current_selected_item_index
+        current_selected_item = value
+        current_selected_item_index = index
+    except IndexError:
+        pass
 
 
 
 def mirror_info_to_side(file_name):
     sidebox.delete('1.0',END)
-    #Fetch info from file after decoding
-    print(f'Fetching {document_path}//{file_name}.txt')
-    account_info_encrypted = open(f'{document_path}//{file_name}.txt', 'r')
-    account_info = account_info_encrypted.read()
+    print(f'Fetching info from Database')
+#    account_info_encrypted = open(f'{document_path}//{file_name}.txt', 'r')
+#    account_info = account_info_encrypted.read()
+    c.execute(f"SELECT information FROM accounts WHERE name='{file_name}'")
+    account_info = c.fetchone()
+    account_info = account_info[0]
     #Checks for the key, decodes if key exists
     if len(master_key_str) > 0:
         account_info = decode(master_key_str,account_info)
@@ -562,13 +577,16 @@ def rclick_delete_item_window(item):
     no_button.grid(row=1,padx=(180,0),pady=(20,0))
 
 
+
 def delete_item(current_selected_item,window):
     print(f'Deleting {current_selected_item}')
-    if os.path.isfile(f'{document_path}//{current_selected_item}.txt'):
-        os.remove(f'{document_path}//{current_selected_item}.txt')
-        print('Item has been removed')
-    else:
-        print('Error file not found')
+    c.execute(f"DELETE FROM accounts WHERE name='{current_selected_item}'")
+    connection.commit()
+ #   if os.path.isfile(f'{document_path}//{current_selected_item}.txt'):
+ #       os.remove(f'{document_path}//{current_selected_item}.txt')
+ #       print('Item has been removed')
+ #   else:
+ #       print('Error file not found')
     window.destroy()
     reload_list(view_entries(document_path), searchentry, reload=1)
 
@@ -657,7 +675,7 @@ toolbar = Frame(root)
 toolbar.grid(row=0,sticky=E+W)
 key_button = Button(toolbar,image=image_for_button,width=60,height=25,relief=GROOVE, command=master_key_window)
 key_button.grid(sticky=W,padx=(1,0))
-setting_button = Button(toolbar,image=image_for_button2,width=60,height=25,relief=GROOVE,command=lambda:settings(document_path))
+setting_button = Button(toolbar,image=image_for_button2,width=60,height=25,relief=GROOVE,command=lambda:settings(document_path,sqlite_file))
 setting_button.grid(sticky=W,padx=(1,0),column=1,row=0)
 
 
