@@ -7,19 +7,26 @@ import base64
 import os
 import sqlite3
 import datetime
-from Crypto import Random
-from Crypto.Cipher import AES
+#pip install pycryptodomex
+from Cryptodome import Random
+from Cryptodome.Cipher import AES
+#already installed
 import hashlib
 from tkinter import ttk
 import uuid
 import subprocess
 
+#What to add:
+#Add folder / category creation
+#Add min size for the window
+#Add backup to gdrive / onedrive
+#redesign settings menu (again)
 
 #Main Window
 root = Tk()
 root.title('SafeKey Password Manager')
 root.grid_propagate(False)
-#root.minsize(width=10,height=1)
+#root.minsize(width=846,height=400)
 
 #Generate a unique IV from the Computer UUID
 def iv_from_uuid():
@@ -47,7 +54,7 @@ def load_settings():
 #        os.makedirs('accounts')
         current_directory = os.getcwd()
         config_file = open('sfky_cnfg.pkl', 'wb')
-        config_elements = {'file_location':f'{current_directory}\\db.sqlite',
+        config_elements = {'file_location':f'db.sqlite',
                            'master_key':'key_string',
                            'key_file_location':'file_path',
                            'use_key_file':'false',
@@ -56,7 +63,9 @@ def load_settings():
                            'aes_iv':iv,
                            'geometry':'100x19+900+520',
                            'width':'846',
-                           'height':'400'
+                           'height':'400',
+                           'x_pos':'x',
+                           'y_pos':'y'
                            }
         pickle.dump(config_elements,config_file)
         config_file.close()
@@ -77,12 +86,14 @@ def load_settings():
         master_key_str = config_elements["master_key"]
     else:
         master_key_str = ''
-    global geometry,width,height,encryption,key_file_path
+    global geometry,width,height,encryption,key_file_path,window_x,window_y
     geometry = config_elements["geometry"]
     width = config_elements["width"]
     height = config_elements["height"]
     encryption = config_elements["encryption_format"]
     key_file_path = config_elements["key_file_location"]
+    window_x = config_elements["x_pos"]
+    window_y = config_elements["y_pos"]
     print(f'Database file: {document_path}')
     print(f'Master key from file: {config_elements["master_key"]}')
     print(f'Key file location: {config_elements["key_file_location"]}')
@@ -306,10 +317,12 @@ def folder_select(file_entry):
 
 
 def settings(document_path,sqlite_file):
+    x = recalc_position()[0]
+    y = recalc_position()[1]
     file_window_root = Toplevel(root)
     file_window_root.title('Settings')
     file_window_root.resizable(width=False,height=False)
-    file_window_root.geometry('577x125+902+605')
+    file_window_root.geometry(f'577x125+{x}+{y}')
     #Entry Field and placement
     file_entry = Entry(file_window_root,width=60)
     file_entry.focus()
@@ -541,7 +554,7 @@ def resize():
     height = root.winfo_height()
     return geometry,width,height
 
-
+#Get the position and the width and length of the window right before it gets closed to save for letter
 def dump_geometry():
     geometry = resize()
     geometry = geometry[0]
@@ -558,6 +571,20 @@ def dump_geometry():
     with open(f'sfky_cnfg.pkl', 'wb') as config_file:
         pickle.dump(config_elements, config_file)
     root.destroy()
+
+#Check the position of the window every time it is moved
+def dump_position():
+    window_x = root.winfo_x()
+    window_y = root.winfo_y()
+    window_width = root.winfo_width()
+    window_height = root.winfo_height()
+    #print(f'x: {window_x} y: {window_y}')
+    with open(f'sfky_cnfg.pkl','rb') as config_file:
+        config_elements['x_pos'] = window_x
+        config_elements['y_pos'] = window_y
+    with open(f'sfky_cnfg.pkl', 'wb') as config_file:
+        pickle.dump(config_elements, config_file)
+    return window_x,window_y,window_width,window_height
 
 #Settings window end==================================================================================================
 
@@ -585,12 +612,25 @@ def close_window_and_input_key(key_entry,key_button,key_window_root):
     close_window(key_window_root,current_selected_item,current_selected_item_index)
 
 
+def recalc_position():
+    position = dump_position()
+    #Get new x-coordinate
+    width_adj = int(position[2]) / 3.5
+    x = str(round(int(position[0]) + width_adj))
+    #Get new y-coordinate
+    height_adj = int(position[3]) / 2.4
+    y = str(round(int(position[1]) + height_adj))
+    return x,y
+
 
 def master_key_window():
+    #grab x,y coordinates relative to size and position of main window
+    x = recalc_position()[0]
+    y = recalc_position()[1]
     key_window_root = Toplevel(root)
     key_window_root.title('Input Master Key')
     key_window_root.resizable(width=False,height=False)
-    key_window_root.geometry('531x30+902+605')
+    key_window_root.geometry(f'531x30+{x}+{y}')
     #Button Label and placement
     key_label = Label(key_window_root, text="Master Key: ")
     key_label.grid(sticky=E,row=0,pady=(2,2),)
@@ -653,7 +693,6 @@ def reload_list(selection_array,searchentry,reload):
     except:
         pass
 
-
 def update_listbox(selection_array):
 #    listmenu.delete(0, END)
     listmenu2.delete(*listmenu2.get_children())
@@ -694,9 +733,11 @@ def check_if_search_empty(searchentry):
 
 #New account panel
 def new_account_window():
+    x = recalc_position()[0]
+    y = recalc_position()[1]
     newpanel = Toplevel(root)
     newpanel.resizable(width=False,height=False)
-    newpanel.geometry('330x158+900+569')
+    newpanel.geometry(f'330x158+{x}+{y}')
     namelabel = Label(newpanel,text='Service:')
     namelabel.grid(row=1,padx=(31,0))
     label2 = Label(newpanel,text='Information:')
@@ -1014,6 +1055,7 @@ root.grid_rowconfigure(2, weight=1)
 #Resize event
 #root.bind("<Configure>", resize)
 root.protocol("WM_DELETE_WINDOW", dump_geometry)
+#root.bind("<Configure>", dump_position)
 
 #Show GUI
 status_update(master_key_str,found_amount=0,search_update=0)
